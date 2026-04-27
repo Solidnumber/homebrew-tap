@@ -1,9 +1,9 @@
 # Solid# CLI — AI Business Infrastructure from the terminal.
 #
-# Homebrew formula. Pulls the published npm tarball, installs into
-# Homebrew's Cellar, and exposes `solid` on PATH. Future releases:
-# the CI in github.com/Adam-Camp-King/solid-cli auto-opens a PR here
-# bumping the version + sha256 on every `npm publish`.
+# Homebrew formula. Pulls the published npm tarball, installs runtime
+# deps into the keg's libexec, and exposes `solid` on PATH. Future
+# releases auto-bump via solid-cli's CI: every `npm publish` opens a
+# PR here updating version + sha256.
 class Cli < Formula
   desc "AI business infrastructure from the terminal — CRM, payments, voice AI, agents"
   homepage "https://solidnumber.com/docs/cli"
@@ -12,24 +12,31 @@ class Cli < Formula
   license "BUSL-1.1"
 
   # solid-cli requires Node 20+. brew installs `node` (current LTS) as
-  # a dep — we deliberately don't pin node@20 because it's deprecated
-  # upstream and any modern node satisfies our engines requirement.
+  # a dep — we don't pin node@20 because it's deprecated upstream.
   depends_on "node"
 
   def install
-    # Install the package's runtime deps into a private prefix under
-    # libexec, then symlink the `solid` binstub into Homebrew's bin/.
-    # `--production` skips devDependencies (they're not needed at
-    # runtime and our prepublishOnly verifier proves it).
-    system "npm", "install", "--global", "--prefix=#{libexec}",
-           "--production", "--omit=dev", "."
-    bin.install_symlink Dir["#{libexec}/bin/*"]
+    # 1. Copy the entire extracted tarball into libexec.
+    libexec.install Dir["*"]
+
+    # 2. Resolve runtime deps (axios, commander, lighthouse, etc.).
+    #    --omit=dev because devDeps aren't needed at runtime —
+    #    solid-cli's prepublishOnly already proves that.
+    cd libexec do
+      system "npm", "install", "--omit=dev"
+    end
+
+    # 3. Make the entry script executable (shebang is `#!/usr/bin/env node`,
+    #    which finds the node we depend_on via PATH at runtime).
+    chmod 0755, libexec/"dist/index.js"
+
+    # 4. Symlink the brew bin into the entry. Users get `solid` on PATH.
+    bin.install_symlink libexec/"dist/index.js" => "solid"
   end
 
   test do
-    # If the binary is broken, this fails the formula. `--version`
-    # is the cheapest possible boot smoke and prints the version
-    # we just installed.
+    # Cheapest possible boot smoke. Fails the formula if the binary
+    # is broken or version drifts from the URL we declared above.
     assert_match version.to_s, shell_output("#{bin}/solid --version")
   end
 end
