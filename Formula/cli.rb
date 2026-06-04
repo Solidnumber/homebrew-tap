@@ -1,9 +1,10 @@
 # Solid# CLI — AI Business Infrastructure from the terminal.
 #
 # Homebrew formula. Pulls the published npm tarball, installs runtime
-# deps into the keg's libexec, and exposes `solid` on PATH. Future
-# releases auto-bump via solid-cli's CI: every `npm publish` opens a
-# PR here updating version + sha256.
+# deps into the keg's libexec, and exposes `solid` on PATH. Releases
+# auto-bump via .github/workflows/auto-bump.yml in THIS repo (polls
+# npm every 4h, self-commits version + sha256 — no secrets needed);
+# solid-cli's homebrew-bump.yml is the optional instant fast path.
 class Cli < Formula
   desc "AI business infrastructure from the terminal — CRM, payments, voice AI, agents"
   homepage "https://solidnumber.com/docs/cli"

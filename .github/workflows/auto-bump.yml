@@ -1,0 +1,61 @@
+name: Auto-bump from npm
+
+# Self-contained bump: polls the npm registry for the latest
+# @solidnumber/cli and updates Formula/cli.rb when it drifts.
+# Runs on the built-in GITHUB_TOKEN — no PAT, no cross-repo secret,
+# nothing that can silently expire. This is the guaranteed catch-all;
+# solid-cli's homebrew-bump.yml is the optional instant fast path.
+
+on:
+  schedule:
+    - cron: "17 */4 * * *" # every 4 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compare npm latest vs formula
+        id: check
+        run: |
+          LATEST="$(curl -fsSL https://registry.npmjs.org/@solidnumber/cli/latest | jq -r .version)"
+          CURRENT="$(grep -oE 'cli-[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.]+)?\.tgz' Formula/cli.rb | head -1 | sed -E 's/^cli-//; s/\.tgz$//')"
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "could not read latest version from npm registry"
+            exit 1
+          fi
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "formula already at $CURRENT — nothing to do"
+            echo "bump=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "bump needed: $CURRENT -> $LATEST"
+            echo "bump=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump formula
+        if: steps.check.outputs.bump == 'true'
+        run: |
+          VERSION="${{ steps.check.outputs.latest }}"
+          curl -fsSL "https://registry.npmjs.org/@solidnumber/cli/-/cli-${VERSION}.tgz" -o /tmp/cli.tgz
+          # Never hash an empty/partial file — a wrong sha256 ships a
+          # checksum-mismatch to every brew user.
+          if [ ! -s /tmp/cli.tgz ]; then
+            echo "empty tarball download — refusing to hash"
+            exit 1
+          fi
+          SHA="$(sha256sum /tmp/cli.tgz | awk '{print $1}')"
+          sed -E -i \
+            -e "s|url \"https://registry\\.npmjs\\.org/@solidnumber/cli/-/cli-[^\"]+\\.tgz\"|url \"https://registry.npmjs.org/@solidnumber/cli/-/cli-${VERSION}.tgz\"|" \
+            -e "s|sha256 \"[a-f0-9]{64}\"|sha256 \"${SHA}\"|" \
+            Formula/cli.rb
+          git config user.name  "solid-cli-bot"
+          git config user.email "bot@solidnumber.com"
+          git add Formula/cli.rb
+          git commit -m "bump cli → ${VERSION} (auto)"
+          git push
