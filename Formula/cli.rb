@@ -35,6 +35,19 @@ class Cli < Formula
     bin.install_symlink libexec/"dist/index.js" => "solid"
   end
 
+  def caveats
+    <<~EOS
+      Get started:
+        solid setup     # sign in + connect your AI (Claude/Cursor/VS Code)
+        solid ai        # chat with your AI about your business
+
+      On macOS older than 13 (Ventura), brew has no prebuilt Node bottle
+      and compiles Node from source (30-90+ min). Prefer the one-paste
+      installer there:
+        curl -fsSL https://solidnumber.com/install.sh | sh
+    EOS
+  end
+
   test do
     # Cheapest possible boot smoke. Fails the formula if the binary
     # is broken or version drifts from the URL we declared above.
