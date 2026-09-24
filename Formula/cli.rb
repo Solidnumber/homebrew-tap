@@ -8,8 +8,8 @@
 class Cli < Formula
   desc "AI business infrastructure from the terminal — CRM, payments, voice AI, agents"
   homepage "https://solidnumber.com/docs/cli"
-  url "https://registry.npmjs.org/@solidnumber/cli/-/cli-2.24.7.tgz"
-  sha256 "5c3bcb232acaa4a4fe7ef9b8bc1422ae7cc9cd5acee7621e7d0cca980c902a5d"
+  url "https://registry.npmjs.org/@solidnumber/cli/-/cli-2.24.8.tgz"
+  sha256 "b77298d0f152557a643f6aafc875c48a0366b07f005145e3957cb63b4807e28f"
   license "BUSL-1.1"
 
   # solid-cli requires Node 20+. brew installs `node` (current LTS) as
